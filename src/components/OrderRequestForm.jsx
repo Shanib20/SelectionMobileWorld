@@ -5,6 +5,7 @@ import { ShoppingBag, X, Send, Image as ImageIcon, Loader } from 'lucide-react';
 const OrderRequestForm = ({ onClose }) => {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [errorMessage, setErrorMessage] = useState(''); // New error state
     const [imageFile, setImageFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [formData, setFormData] = useState({
@@ -15,9 +16,11 @@ const OrderRequestForm = ({ onClose }) => {
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+        setErrorMessage('');
     };
 
     const handleImageChange = (e) => {
+        setErrorMessage('');
         const file = e.target.files[0];
         if (file) {
             setImageFile(file);
@@ -26,6 +29,7 @@ const OrderRequestForm = ({ onClose }) => {
     };
 
     const uploadImage = async (file) => {
+        console.log('Uploading order image...');
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `order-requests/${fileName}`;
@@ -34,7 +38,10 @@ const OrderRequestForm = ({ onClose }) => {
             .from('product-images')
             .upload(filePath, file);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+            console.error('Upload Error:', uploadError);
+            throw uploadError;
+        }
 
         const { data } = supabase.storage
             .from('product-images')
@@ -46,6 +53,8 @@ const OrderRequestForm = ({ onClose }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setErrorMessage('');
+        console.log('Submitting Order Request...', formData);
 
         try {
             let imageUrl = null;
@@ -53,19 +62,25 @@ const OrderRequestForm = ({ onClose }) => {
                 imageUrl = await uploadImage(imageFile);
             }
 
-            const { error } = await supabase
+            const { error, data } = await supabase
                 .from('item_requests')
                 .insert([{
                     ...formData,
                     image_url: imageUrl,
                     status: 'pending'
-                }]);
+                }])
+                .select();
 
-            if (error) throw error;
+            if (error) {
+                console.error('Insert Error:', error);
+                throw error;
+            }
+
+            console.log('Order Success:', data);
             setSuccess(true);
         } catch (error) {
-            console.error(error);
-            alert('Failed to submit request: ' + error.message);
+            console.error('Order Submit Catch:', error);
+            setErrorMessage('Failed to submit: ' + (error.message || JSON.stringify(error)));
         } finally {
             setLoading(false);
         }
@@ -102,6 +117,13 @@ const OrderRequestForm = ({ onClose }) => {
                 </h2>
                 <p className="text-blue-100 mt-2 text-sm">Upload a pic of what you need & we'll convert it to an order!</p>
             </div>
+
+            {errorMessage && (
+                <div className="bg-red-50 border-l-4 border-red-500 p-4 m-6 mb-0">
+                    <p className="text-red-700 font-medium">Error:</p>
+                    <p className="text-red-600 text-xs break-words">{errorMessage}</p>
+                </div>
+            )}
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
                 <div>

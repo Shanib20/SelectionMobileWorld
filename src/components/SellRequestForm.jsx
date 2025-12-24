@@ -6,6 +6,7 @@ const SellRequestForm = () => {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState(''); // New error state
     const [images, setImages] = useState([]); // Array of strings (urls)
     const [formData, setFormData] = useState({
         phone_name: '',
@@ -17,9 +18,11 @@ const SellRequestForm = () => {
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+        setErrorMessage(''); // Clear error on change
     };
 
     const handleImageUpload = async (e) => {
+        setErrorMessage('');
         if (images.length >= 4) {
             alert("Maximum 4 images allowed");
             return;
@@ -34,11 +37,15 @@ const SellRequestForm = () => {
             const fileName = `sell_${Math.random()}.${fileExt}`;
             const filePath = `${fileName}`;
 
+            console.log('Uploading image...', filePath);
             const { error: uploadError } = await supabase.storage
                 .from('product-images')
                 .upload(filePath, file);
 
-            if (uploadError) throw uploadError;
+            if (uploadError) {
+                console.error('Upload Error:', uploadError);
+                throw uploadError;
+            }
 
             const { data } = supabase.storage
                 .from('product-images')
@@ -47,7 +54,8 @@ const SellRequestForm = () => {
             setImages(prev => [...prev, data.publicUrl]);
 
         } catch (error) {
-            alert('Error uploading image: ' + error.message);
+            console.error('Image Upload Catch:', error);
+            setErrorMessage('Error uploading image: ' + (error.message || JSON.stringify(error)));
         } finally {
             setUploading(false);
         }
@@ -60,21 +68,29 @@ const SellRequestForm = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setErrorMessage('');
+        console.log('Submitting form...', formData);
 
         try {
-            const { error } = await supabase
+            const { error, data } = await supabase
                 .from('sell_requests')
                 .insert([{
                     ...formData,
                     images: images,
                     status: 'pending'
-                }]);
+                }])
+                .select();
 
-            if (error) throw error;
+            if (error) {
+                console.error('Insert Error:', error);
+                throw error;
+            }
+
+            console.log('Success:', data);
             setSuccess(true);
         } catch (error) {
-            console.error(error);
-            alert('Failed to submit request: ' + error.message);
+            console.error('Submission Catch:', error);
+            setErrorMessage('Failed to submit: ' + (error.message || JSON.stringify(error)));
         } finally {
             setLoading(false);
         }
@@ -104,6 +120,13 @@ const SellRequestForm = () => {
                 <h2 className="text-2xl font-bold">Sell Your Phone</h2>
                 <p className="text-blue-100 mt-1">Fill in the details below and we'll offer you the best price.</p>
             </div>
+
+            {errorMessage && (
+                <div className="bg-red-50 border-l-4 border-red-500 p-4 m-8 mb-0">
+                    <p className="text-red-700 font-medium">Something went wrong:</p>
+                    <p className="text-red-600 text-sm">{errorMessage}</p>
+                </div>
+            )}
 
             <form onSubmit={handleSubmit} className="p-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

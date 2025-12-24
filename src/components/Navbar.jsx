@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Menu, X, Smartphone, Headphones, Wrench, MoreHorizontal, ShoppingCart, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import ThemeToggle from './ThemeToggle';
+import OrderRequestForm from './OrderRequestForm';
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);

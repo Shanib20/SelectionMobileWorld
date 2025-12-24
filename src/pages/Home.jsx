@@ -78,8 +78,7 @@ const Home = () => {
     const usedMobiles = products.filter(p => p.category === 'mobile' && p.subcategory === 'Used');
     // We don't display individual products for Accessories/Lifestyle anymore here, just the collection cards.
 
-    // Remove loading check to prevent layout thrashing which kills scroll position
-    // if (loading && products.length === 0) return <div className="text-center py-20">Loading...</div>;
+    if (loading && products.length === 0) return <div className="text-center py-20">Loading...</div>;
 
     return (
         <>
